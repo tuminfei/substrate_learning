@@ -1,7 +1,7 @@
 # Build Chain
 
 ```
-git checkout v0.9.40
+git checkout v1.0.0
 
 ./scripts/init.sh
 
