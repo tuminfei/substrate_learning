@@ -11,7 +11,6 @@ pub use pallet::*;
 // #[cfg(test)]
 // mod tests;
 
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -23,7 +22,6 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub struct Kitty(pub [u8; 16]);
 
-
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -32,8 +30,6 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// Type representing the weight of this pallet
-		type WeightInfo: WeightInfo;
 	}
 
 	// The pallet's runtime storage items.
@@ -89,35 +85,17 @@ pub mod pallet {
 			Self::deposit_event(Event::KittyCreated { who, kitty_id, kitty });
 			Ok(())
 		}
-
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::cause_error())]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
-
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => return Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
-		}
 	}
 
-	impl<T: Config> pallet<T> {
+	impl<T: Config> Pallet<T> {
 		fn get_next_id() -> Result<KittyId, DispatchError> {
-			NextKittyId::<T>::try_mutate(| next_id| -> Result<KittyId, DispatchError>) {
+			NextKittyId::<T>::try_mutate(|next_id| -> Result<KittyId, DispatchError> {
 				let current_id = *next_id;
-				*next_id = next_id.checked_add(1).ok_or::<DispatchError>(Error::<T>::InvalidKittyId.into())?;
+				*next_id = next_id
+					.checked_add(1)
+					.ok_or::<DispatchError>(Error::<T>::InvalidKittyId.into())?;
 				Ok(current_id)
-			}
+			})
 		}
 	}
 }
