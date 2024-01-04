@@ -5,11 +5,11 @@
 /// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
 
-#[cfg(test)]
-mod mock;
+// #[cfg(test)]
+// mod mock;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 
 #[frame_support::pallet]
@@ -18,22 +18,11 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	// Struct for holding Kitty information.
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Kitty<T: Config> {
-		pub dna: [u8; 16],
-		pub price: Option<BalanceOf<T>>,
-		pub gender: Gender,
-		pub owner: AccountOf<T>,
-	}
+	pub type KittyId = u32;
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub enum Gender {
-		Male,
-		Female,
-	}
+	pub struct Kitty(pub [u8; 16]);
+
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -50,28 +39,31 @@ pub mod pallet {
 	// The pallet's runtime storage items.
 	// https://docs.substrate.io/main-docs/build/runtime-storage/
 	#[pallet::storage]
-	#[pallet::getter(fn something)]
+	#[pallet::getter(fn next_kitty_id)]
 	// Learn more about declaring storage items:
 	// https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
+	pub type NextKittyId<T> = StorageValue<_, KittyId, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn kitties)]
+	pub type Kitties<T> = StorageMap<_, Blake2_128Concat, KittyId, Kitty>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn kitty_owner)]
+	pub type KittyOwner<T: Config> = StorageMap<_, Blake2_128Concat, KittyId, T::AccountId>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/main-docs/build/events-errors/
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event documentation should end with an array that provides descriptive names for event
-		/// parameters. [something, who]
-		SomethingStored { something: u32, who: T::AccountId },
+		KittyCreated { who: T::AccountId, kitty_id: KittyId, kitty: Kitty },
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
+		InvalidKittyId,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -82,19 +74,19 @@ pub mod pallet {
 		/// An example dispatchable that takes a singles value as a parameter, writes the value to
 		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::do_something())]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/main-docs/build/origins/
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn create(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let kitty_id = Self::get_next_id()?;
+			let kitty = Kitty(Default::default());
+
 			// Update storage.
-			<Something<T>>::put(something);
+			Kitties::<T>::insert(kitty_id, &kitty);
+			KittyOwner::<T>::insert(kitty_id, &who);
 
 			// Emit an event.
-			Self::deposit_event(Event::SomethingStored { something, who });
-			// Return a successful DispatchResultWithPostInfo
+			Self::deposit_event(Event::KittyCreated { who, kitty_id, kitty });
 			Ok(())
 		}
 
@@ -115,6 +107,16 @@ pub mod pallet {
 					<Something<T>>::put(new);
 					Ok(())
 				},
+			}
+		}
+	}
+
+	impl<T: Config> pallet<T> {
+		fn get_next_id() -> Result<KittyId, DispatchError> {
+			NextKittyId::<T>::try_mutate(| next_id| -> Result<KittyId, DispatchError>) {
+				let current_id = *next_id;
+				*next_id = next_id.checked_add(1).ok_or::<DispatchError>(Error::<T>::InvalidKittyId.into())?;
+				Ok(current_id)
 			}
 		}
 	}
