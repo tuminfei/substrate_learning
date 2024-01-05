@@ -56,3 +56,13 @@ yarn build
 ```
 
 and open `build/index.html` in your favorite browser.
+
+## Homework
+
+### Lesson 2 - Kitties
+
+```bash
+cd homework/pallets/kitties
+
+cargo build --release
+```bash
