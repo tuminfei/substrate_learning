@@ -65,4 +65,4 @@ and open `build/index.html` in your favorite browser.
 cd homework/pallets/kitties
 
 cargo build --release
-```bash
+```
