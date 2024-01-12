@@ -1,4 +1,4 @@
-use crate::{mock::*, Error, Event};
+use crate::{mock::*, *};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
@@ -6,6 +6,9 @@ fn it_works_for_create() {
 	new_test_ext().execute_with(|| {
 		let kitty_id = 0;
 		let account_id = 0;
+
+		// set balance
+		assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), account_id, 100000000000));
 
 		assert_eq!(KittiesModule::next_kitty_id(), kitty_id);
 		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), *b"1234"));
@@ -27,7 +30,7 @@ fn it_works_for_create() {
 
 		crate::NextKittyId::<Test>::set(crate::KittyId::max_value());
 		assert_noop!(
-			KittiesModule::create(RuntimeOrigin::signed(account_id), b"1234"),
+			KittiesModule::create(RuntimeOrigin::signed(account_id), *b"1234"),
 			Error::<Test>::InvalidKittyId
 		);
 	});
@@ -39,22 +42,30 @@ fn it_works_for_bred() {
 		let kitty_id = 0;
 		let account_id = 1;
 
+		// set balance
+		assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), account_id, 100000000000));
+
 		assert_noop!(
-			KittiesModule::bred(RuntimeOrigin::signed(account_id), kitty_id, kitty_id),
+			KittiesModule::bred(RuntimeOrigin::signed(account_id), kitty_id, kitty_id, *b"1234"),
 			Error::<Test>::SameKittyId
 		);
 
 		assert_noop!(
-			KittiesModule::bred(RuntimeOrigin::signed(account_id), kitty_id, kitty_id),
+			KittiesModule::bred(RuntimeOrigin::signed(account_id), kitty_id, kitty_id, *b"1234"),
 			Error::<Test>::SameKittyId
 		);
 
-		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), b"1234"));
-		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), b"5678"));
+		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), *b"1234"));
+		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), *b"5678"));
 
 		assert_eq!(KittiesModule::next_kitty_id(), kitty_id + 2);
 
-		assert_ok!(KittiesModule::bred(RuntimeOrigin::signed(account_id), kitty_id, kitty_id + 1, b"1234"));
+		assert_ok!(KittiesModule::bred(
+			RuntimeOrigin::signed(account_id),
+			kitty_id,
+			kitty_id + 1,
+			*b"1234"
+		));
 
 		// assert event
 		System::assert_last_event(
@@ -81,7 +92,7 @@ fn it_works_for_transfer() {
 		let account_id = 1;
 		let recipient = 2;
 
-		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), b"1234"));
+		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), *b"1234"));
 		assert_eq!(KittiesModule::kitty_owner(kitty_id), Some(account_id));
 
 		assert_noop!(
