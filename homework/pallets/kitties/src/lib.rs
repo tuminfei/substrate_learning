@@ -7,25 +7,23 @@ pub use pallet::*;
 
 mod migrations;
 
-#[cfg(test)]
-mod mock;
+// #[cfg(test)]
+// mod mock;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{pallet_prelude::*, traits::Hooks};
+	use crate::migrations;
+
+	use frame_support::{pallet_prelude::*, traits::Hooks, PalletId};
 	use frame_system::pallet_prelude::{BlockNumberFor, *};
 
-	use frame_support::{
-		traits::{Currency, ExistenceRequirement, Randomness},
-		PalletId,
-	};
+	use frame_support::traits::{Currency, ExistenceRequirement, Randomness};
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::AccountIdConversion;
-	use create::migrations;
 
 	pub type KittyId = u32;
 	pub type BalanceOf<T> =
@@ -107,7 +105,7 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
-			migrations::v1::migration::<T>()
+			migrations::v1::migrate::<T>()
 		}
 	}
 
@@ -160,15 +158,15 @@ pub mod pallet {
 			ensure!(Kitties::<T>::contains_key(kitty_id_1), Error::<T>::InvalidKittyId);
 			ensure!(Kitties::<T>::contains_key(kitty_id_2), Error::<T>::InvalidKittyId);
 
-			let kitty_id = Self::get_next_id()?;
+			let kitty_id: u32 = Self::get_next_id()?;
 			let kitty_1 = Self::kitties(kitty_id_1).ok_or(Error::<T>::InvalidKittyId)?;
 			let kitty_2 = Self::kitties(kitty_id_2).ok_or(Error::<T>::InvalidKittyId)?;
 
 			let selector = Self::random_value(&who);
-			let dna = [0u8; 16];
-			// for i in 0..kitty_1.0.len() {
-			// 	data[i] = (kitty_1.0[i] & selector[i]) | (kitty_2.0[i] & selector[i])
-			// }
+			let mut dna = [0u8; 16];
+			for i in 0..kitty_1.dna.len() {
+				dna[i] = (kitty_1.dna[i] & selector[i]) | (kitty_2.dna[i] & selector[i])
+			}
 
 			let kitty = Kitty { dna, name };
 

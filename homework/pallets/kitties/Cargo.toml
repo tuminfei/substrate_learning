@@ -24,6 +24,8 @@ sp-io = { default-features = false, version = "23.0.0", git = "https://github.co
 sp-core = { default-features = false, version = "21.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0" }
 sp-runtime = { default-features = false, version = "24.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0" }
 pallet-insecure-randomness-collective-flip = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0" }
+pallet-balances = { default-features = false, version = "4.0.0-dev", git = 'https://github.com/paritytech/substrate.git', branch = "polkadot-v1.0.0" }
+
 
 [features]
 default = ["std"]
@@ -34,6 +36,7 @@ std = [
 	"frame-system/std",
 	"scale-info/std",
 	"pallet-insecure-randomness-collective-flip/std",
+	"pallet-balances/std",
 	"sp-io/std",
 	"sp-runtime/std",
 ]
