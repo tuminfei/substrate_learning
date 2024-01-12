@@ -92,6 +92,9 @@ fn it_works_for_transfer() {
 		let account_id = 1;
 		let recipient = 2;
 
+		// set balance
+		assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), account_id, 100000000000));
+
 		assert_ok!(KittiesModule::create(RuntimeOrigin::signed(account_id), *b"1234"));
 		assert_eq!(KittiesModule::kitty_owner(kitty_id), Some(account_id));
 

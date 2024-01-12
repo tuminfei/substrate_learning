@@ -74,3 +74,10 @@ cd homework/pallets/kitties
 
 cargo build --release
 ```
+
+add balance for test
+
+```rust
+// set balance
+assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), account_id, 100000000000));
+```

@@ -1,6 +1,6 @@
 use crate as pallet_kitties;
 use frame_support::{
-	construct_runtime, parameter_types,
+	parameter_types,
 	traits::{ConstU128, ConstU16, ConstU32, ConstU64},
 	PalletId,
 };
