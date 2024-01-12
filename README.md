@@ -66,3 +66,11 @@ cd homework/pallets/kitties
 
 cargo build --release
 ```
+
+### Lesson 3 - Kitties
+
+```bash
+cd homework/pallets/kitties
+
+cargo build --release
+```
