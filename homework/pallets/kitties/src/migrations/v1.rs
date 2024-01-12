@@ -7,7 +7,7 @@ use frame_system::pallet_prelude::*;
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct OldKitty(pub [u8; 16]);
 
-pub fn migration<T: Config> -> Weight {
+pub fn migration<T: Config>() -> Weight {
     let on_chain_version = Pallet::<T>::on_chain_storage_version();
     let current_version = Pallet::<T>::current_storage_version();
 

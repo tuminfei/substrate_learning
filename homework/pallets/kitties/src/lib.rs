@@ -25,6 +25,7 @@ pub mod pallet {
 	};
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::AccountIdConversion;
+	use create::migrations;
 
 	pub type KittyId = u32;
 	pub type BalanceOf<T> =
@@ -151,6 +152,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			kitty_id_1: KittyId,
 			kitty_id_2: KittyId,
+			name: [u8; 4],
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(kitty_id_1 != kitty_id_2, Error::<T>::SameKittyId);
@@ -163,12 +165,12 @@ pub mod pallet {
 			let kitty_2 = Self::kitties(kitty_id_2).ok_or(Error::<T>::InvalidKittyId)?;
 
 			let selector = Self::random_value(&who);
-			let mut data = [0u8; 16];
-			for i in 0..kitty_1.0.len() {
-				data[i] = (kitty_1.0[i] & selector[i]) | (kitty_2.0[i] & selector[i])
-			}
+			let dna = [0u8; 16];
+			// for i in 0..kitty_1.0.len() {
+			// 	data[i] = (kitty_1.0[i] & selector[i]) | (kitty_2.0[i] & selector[i])
+			// }
 
-			let kitty = Kitty(data);
+			let kitty = Kitty { dna, name };
 
 			// reserv currency
 			let price = T::KittyPrice::get();
