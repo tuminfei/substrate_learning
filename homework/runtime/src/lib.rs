@@ -51,6 +51,7 @@ pub use pallet_insecure_randomness_collective_flip;
 pub use pallet_kitties;
 /// Import the template pallet.
 pub use pallet_template;
+pub use pallet_offchain;
 
 /// An index to a block.
 pub type BlockNumber = u32;
