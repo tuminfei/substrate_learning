@@ -81,3 +81,11 @@ add balance for test
 // set balance
 assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), account_id, 100000000000));
 ```
+
+### Lesson 4 - Offchain
+
+```bash
+cd homework/pallets/offchain
+
+cargo build --release
+```
