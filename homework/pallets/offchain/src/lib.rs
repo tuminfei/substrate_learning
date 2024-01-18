@@ -24,6 +24,12 @@ use sp_runtime::{
 	RuntimeDebug,
 };
 
+use frame_support::dispatch::Vec;
+use sp_runtime::{
+	offchain::storage::{MutateStorageError, StorageRetrievalError, StorageValueRef},
+	traits::Zero,
+};
+
 use sp_core::crypto::KeyTypeId;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"btc!");
@@ -94,6 +100,12 @@ pub mod pallet {
 	// Learn more about declaring storage items:
 	// https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
 	pub type Something<T> = StorageValue<_, u32>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn next_offchain_id)]
+	// Learn more about declaring storage items:
+	// https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
+	pub type NextOffchainId<T> = StorageValue<_, u128, ValueQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/main-docs/build/events-errors/
@@ -216,7 +228,7 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Offchain worker entry point.
-		fn offchain_worker(_block_number: BlockNumberFor<T>) {
+		fn offchain_worker(block_number: BlockNumberFor<T>) {
 			// let value: u64 = 42;
 			// // This is your call to on-chain extrinsic together with any necessary parameters.
 			// let call = Call::submit_data_unsigned { key: value };
@@ -227,6 +239,52 @@ pub mod pallet {
 			// 	.map_err(|_| {
 			// 	log::error!("OCW ==> Failed in offchain_unsigned_tx");
 			// });
+
+			if block_number % 2u32.into() != Zero::zero() {
+				// odd
+				let key = Self::derive_key(block_number);
+				let val_ref = StorageValueRef::persistent(&key);
+
+				//  get a local random value
+				let random_slice = sp_io::offchain::random_seed();
+
+				//  get a local timestamp
+				let timestamp_u64 = sp_io::offchain::timestamp().unix_millis();
+
+				// combine to a tuple and print it
+				let value = (random_slice, timestamp_u64);
+				log::info!("OCW ==> in odd block, value to write: {:?}", value);
+
+				struct StateError;
+
+				//  write or mutate tuple content to key
+				let res = val_ref.mutate(|val: Result<Option<([u8;32], u64)>, StorageRetrievalError>| -> Result<_, StateError> {
+                    match val {
+                        Ok(Some(_)) => Ok(value),
+                        _ => Ok(value),
+                    }
+                });
+
+				match res {
+					Ok(value) => {
+						log::info!("OCW ==> in odd block, mutate successfully: {:?}", value);
+					},
+					Err(MutateStorageError::ValueFunctionFailed(_)) => (),
+					Err(MutateStorageError::ConcurrentModification(_)) => (),
+				}
+			} else {
+				// even
+				let key = Self::derive_key(block_number - 1u32.into());
+				let mut val_ref = StorageValueRef::persistent(&key);
+
+				// get from db by key
+				if let Ok(Some(value)) = val_ref.get::<([u8; 32], u64)>() {
+					// print values
+					log::info!("OCW ==> in even block, value read: {:?}", value);
+					// delete that key
+					val_ref.clear();
+				}
+			}
 
 			let number: u64 = 42;
 			// Retrieve the signer to sign the payload
@@ -257,6 +315,19 @@ pub mod pallet {
 				// The case of `None`: no account is available for sending
 				log::error!("OCW ==> No local account available");
 			}
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		#[deny(clippy::clone_double_ref)]
+		fn derive_key(block_number: T::BlockNumber) -> Vec<u8> {
+			block_number.using_encoded(|encoded_bn| {
+				b"node-template::storage::"
+					.iter()
+					.chain(encoded_bn)
+					.copied()
+					.collect::<Vec<u8>>()
+			})
 		}
 	}
 }
