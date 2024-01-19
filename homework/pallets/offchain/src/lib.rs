@@ -31,8 +31,12 @@ use sp_runtime::{
 };
 
 use sp_core::crypto::KeyTypeId;
+use sp_io::offchain_index;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"btc!");
+
+pub const ONCHAIN_TX_KEY: &[u8] = b"my_pallet::indexing1";
+
 pub mod crypto {
 	use super::KEY_TYPE;
 	use sp_core::sr25519::Signature as Sr25519Signature;
@@ -72,6 +76,9 @@ pub mod pallet {
 		number: u64,
 		public: Public,
 	}
+
+	#[derive(Debug, Encode, Decode, Default)]
+	struct IndexingData(Vec<u8>, u64);
 
 	impl<T: SigningTypes> SignedPayload<T> for Payload<T::Public> {
 		fn public(&self) -> T::Public {
@@ -186,6 +193,17 @@ pub mod pallet {
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(100)]
+		pub fn extrinsic(origin: OriginFor<T>, number: u64) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let key = Self::derived_key(frame_system::Module::<T>::block_number());
+			let data = IndexingData(b"submit_number_unsigned".to_vec(), number);
+			offchain_index::set(&key, &data.encode());
+			Ok(())
+		}
 	}
 
 	#[pallet::validate_unsigned]
@@ -240,51 +258,51 @@ pub mod pallet {
 			// 	log::error!("OCW ==> Failed in offchain_unsigned_tx");
 			// });
 
-			if block_number % 2u32.into() != Zero::zero() {
-				// odd
-				let key = Self::derive_key(block_number);
-				let val_ref = StorageValueRef::persistent(&key);
+			// if block_number % 2u32.into() != Zero::zero() {
+			// 	// odd
+			// 	let key = Self::derive_key(block_number);
+			// 	let val_ref = StorageValueRef::persistent(&key);
 
-				//  get a local random value
-				let random_slice = sp_io::offchain::random_seed();
+			// 	//  get a local random value
+			// 	let random_slice = sp_io::offchain::random_seed();
 
-				//  get a local timestamp
-				let timestamp_u64 = sp_io::offchain::timestamp().unix_millis();
+			// 	//  get a local timestamp
+			// 	let timestamp_u64 = sp_io::offchain::timestamp().unix_millis();
 
-				// combine to a tuple and print it
-				let value = (random_slice, timestamp_u64);
-				log::info!("OCW ==> in odd block, value to write: {:?}", value);
+			// 	// combine to a tuple and print it
+			// 	let value = (random_slice, timestamp_u64);
+			// 	log::info!("OCW ==> in odd block, value to write: {:?}", value);
 
-				struct StateError;
+			// 	struct StateError;
 
-				//  write or mutate tuple content to key
-				let res = val_ref.mutate(|val: Result<Option<([u8;32], u64)>, StorageRetrievalError>| -> Result<_, StateError> {
-                    match val {
-                        Ok(Some(_)) => Ok(value),
-                        _ => Ok(value),
-                    }
-                });
+			// 	//  write or mutate tuple content to key
+			// 	let res = val_ref.mutate(|val: Result<Option<([u8;32], u64)>, StorageRetrievalError>|
+			// -> Result<_, StateError> {         match val {
+			//             Ok(Some(_)) => Ok(value),
+			//             _ => Ok(value),
+			//         }
+			//     });
 
-				match res {
-					Ok(value) => {
-						log::info!("OCW ==> in odd block, mutate successfully: {:?}", value);
-					},
-					Err(MutateStorageError::ValueFunctionFailed(_)) => (),
-					Err(MutateStorageError::ConcurrentModification(_)) => (),
-				}
-			} else {
-				// even
-				let key = Self::derive_key(block_number - 1u32.into());
-				let mut val_ref = StorageValueRef::persistent(&key);
+			// 	match res {
+			// 		Ok(value) => {
+			// 			log::info!("OCW ==> in odd block, mutate successfully: {:?}", value);
+			// 		},
+			// 		Err(MutateStorageError::ValueFunctionFailed(_)) => (),
+			// 		Err(MutateStorageError::ConcurrentModification(_)) => (),
+			// 	}
+			// } else {
+			// 	// even
+			// 	let key = Self::derive_key(block_number - 1u32.into());
+			// 	let mut val_ref = StorageValueRef::persistent(&key);
 
-				// get from db by key
-				if let Ok(Some(value)) = val_ref.get::<([u8; 32], u64)>() {
-					// print values
-					log::info!("OCW ==> in even block, value read: {:?}", value);
-					// delete that key
-					val_ref.clear();
-				}
-			}
+			// 	// get from db by key
+			// 	if let Ok(Some(value)) = val_ref.get::<([u8; 32], u64)>() {
+			// 		// print values
+			// 		log::info!("OCW ==> in even block, value read: {:?}", value);
+			// 		// delete that key
+			// 		val_ref.clear();
+			// 	}
+			// }
 
 			let number: u64 = 42;
 			// Retrieve the signer to sign the payload
@@ -320,10 +338,21 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		#[deny(clippy::clone_double_ref)]
-		fn derive_key(block_number: T::BlockNumber) -> Vec<u8> {
+		// fn derive_key(block_number: BlockNumberFor<T>) -> Vec<u8> {
+		// 	block_number.using_encoded(|encoded_bn| {
+		// 		b"node-template::storage::"
+		// 			.iter()
+		// 			.chain(encoded_bn)
+		// 			.copied()
+		// 			.collect::<Vec<u8>>()
+		// 	})
+		// }
+		fn derived_key(block_number: BlockNumberFor<T>) -> Vec<u8> {
 			block_number.using_encoded(|encoded_bn| {
-				b"node-template::storage::"
-					.iter()
+				ONCHAIN_TX_KEY
+					.clone()
+					.into_iter()
+					.chain(b"/".into_iter())
 					.chain(encoded_bn)
 					.copied()
 					.collect::<Vec<u8>>()
