@@ -306,34 +306,43 @@ pub mod pallet {
 			// 	}
 			// }
 
-			let number: u64 = 42;
-			// Retrieve the signer to sign the payload
-			let signer = Signer::<T, T::AuthorityId>::any_account();
+			// let number: u64 = 42;
+			// // Retrieve the signer to sign the payload
+			// let signer = Signer::<T, T::AuthorityId>::any_account();
 
-			// `send_unsigned_transaction` is returning a type of `Option<(Account<T>, Result<(),
-			// ()>)>`. 	 The returned result means:
-			// 	 - `None`: no account is available for sending transaction
-			// 	 - `Some((account, Ok(())))`: transaction is successfully sent
-			// 	 - `Some((account, Err(())))`: error occurred when sending the transaction
-			if let Some((_, res)) = signer.send_unsigned_transaction(
-				// this line is to prepare and return payload
-				|acct| Payload { number, public: acct.public.clone() },
-				|payload, signature| Call::unsigned_extrinsic_with_signed_payload {
-					payload,
-					signature,
-				},
-			) {
-				match res {
-					Ok(()) => {
-						log::info!("OCW ==> unsigned tx with signed payload successfully sent.");
-					},
-					Err(()) => {
-						log::error!("OCW ==> sending unsigned tx with signed payload failed.");
-					},
-				};
+			// // `send_unsigned_transaction` is returning a type of `Option<(Account<T>, Result<(),
+			// // ()>)>`. 	 The returned result means:
+			// // 	 - `None`: no account is available for sending transaction
+			// // 	 - `Some((account, Ok(())))`: transaction is successfully sent
+			// // 	 - `Some((account, Err(())))`: error occurred when sending the transaction
+			// if let Some((_, res)) = signer.send_unsigned_transaction(
+			// 	// this line is to prepare and return payload
+			// 	|acct| Payload { number, public: acct.public.clone() },
+			// 	|payload, signature| Call::unsigned_extrinsic_with_signed_payload {
+			// 		payload,
+			// 		signature,
+			// 	},
+			// ) {
+			// 	match res {
+			// 		Ok(()) => {
+			// 			log::info!("OCW ==> unsigned tx with signed payload successfully sent.");
+			// 		},
+			// 		Err(()) => {
+			// 			log::error!("OCW ==> sending unsigned tx with signed payload failed.");
+			// 		},
+			// 	};
+			// } else {
+			// 	// The case of `None`: no account is available for sending
+			// 	log::error!("OCW ==> No local account available");
+			// }
+
+			let key = Self::derived_key(block_number);
+			let storage_ref = StorageValueRef::persistent(&key);
+
+			if let Ok(Some(data)) = storage_ref.get::<IndexingData>() {
+				log::info!("local storage data: {:?}, {:?}", &data.0, data.1);
 			} else {
-				// The case of `None`: no account is available for sending
-				log::error!("OCW ==> No local account available");
+				log::info!("Error reading from local storage.");
 			}
 		}
 	}
