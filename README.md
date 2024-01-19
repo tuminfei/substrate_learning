@@ -89,3 +89,18 @@ cd homework/pallets/offchain
 
 cargo build --release
 ```
+
+```rust
+#[pallet::call_index(3)]
+#[pallet::weight(100)]
+pub fn extrinsic(origin: OriginFor<T>, number: u64) -> DispatchResult {
+	let who = ensure_signed(origin)?;
+
+	let key = Self::derived_key(frame_system::Module::<T>::block_number());
+	let data = IndexingData(b"submit_number_unsigned".to_vec(), number);
+	offchain_index::set(&key, &data.encode());
+
+	log::info!("OCW ==> in extrinsic submit_number_unsigned: {:?}", number);
+	Ok(())
+}
+```
