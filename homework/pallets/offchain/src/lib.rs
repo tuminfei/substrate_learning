@@ -202,6 +202,8 @@ pub mod pallet {
 			let key = Self::derived_key(frame_system::Module::<T>::block_number());
 			let data = IndexingData(b"submit_number_unsigned".to_vec(), number);
 			offchain_index::set(&key, &data.encode());
+
+			log::info!("OCW ==> in extrinsic submit_number_unsigned: {:?}", number);
 			Ok(())
 		}
 	}
@@ -337,7 +339,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		#[deny(clippy::clone_double_ref)]
+		// #[deny(clippy::clone_double_ref)]
 		// fn derive_key(block_number: BlockNumberFor<T>) -> Vec<u8> {
 		// 	block_number.using_encoded(|encoded_bn| {
 		// 		b"node-template::storage::"
