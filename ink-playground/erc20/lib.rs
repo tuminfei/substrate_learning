@@ -2,21 +2,18 @@
 
 #[ink::contract]
 mod erc20 {
-    use core::fmt::Error;
-    use std::backtrace::Backtrace;
-
     use ink::storage::Mapping;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    #[derive(default)]
+    #[derive(Default)]
     pub struct Erc20 {
         /// Stores a single `bool` value on the storage.
         total_supply: Balance,
-        balances: Map<AccountId, Balance>,
-        allowances: Map<(AccountId, AccountId), Balance>,
+        balances: Mapping<AccountId, Balance>,
+        allowances: Mapping<(AccountId, AccountId), Balance>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -41,8 +38,8 @@ mod erc20 {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(total_supply: Balance) -> Self {
-            let mut balances = Mapping.new();
-            balances.insert(Self::env().caller(), total_supply);
+            let mut balances = Mapping::new();
+            balances.insert(Self::env().caller(), &total_supply);
             Self {
                 total_supply,
                 balances,
@@ -72,13 +69,14 @@ mod erc20 {
         pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
             let sender = self.env().caller();
             
-            self.transfer_helper(&sender, &to, value);
+            self.transfer_helper(&sender, &to, value)
         }
+
         pub fn transfer_helper(
             &mut self,
-            &from: AccountId,
-            &to: AccountId,
-            &value: Balance,
+            from: &AccountId,
+            to: &AccountId,
+            value: Balance,
         ) -> Result<()> {
             let balance_form = self.balance_of(*from);
             let balance_to = self.balance_of(*to);
@@ -89,8 +87,8 @@ mod erc20 {
             self.balances.insert(to, &(balance_to + value));
 
             self.env().emit_event(Transfer {
-                from,
-                to,
+                from: *from,
+                to: *to,
                 value,
             });
             Ok(())
