@@ -3,6 +3,7 @@
 #[ink::contract]
 mod erc20 {
     use ink::storage::Mapping;
+    use trait_erc20::{Error, Result, TERC20};
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -16,12 +17,14 @@ mod erc20 {
         allowances: Mapping<(AccountId, AccountId), Balance>,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum Error {
-        BalanceTooLow,
-        AllowanceTooLow,
-    }
+    // type Result<T> = core::result::Result<T, Error>;
+
+    // #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    // #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    // pub enum Error {
+    //     BalanceTooLow,
+    //     AllowanceTooLow,
+    // }
 
     #[ink(event)]
     pub struct Transfer {
@@ -40,8 +43,6 @@ mod erc20 {
         to: AccountId,
         value: Balance,
     }
-
-    type Result<T> = core::result::Result<T, Error>;
 
     impl Erc20 {
         /// Constructor that initializes the `bool` value to the given `init_value`.
@@ -72,56 +73,6 @@ mod erc20 {
             Self::new(Default::default())
         }
 
-        #[ink(message)]
-        pub fn total_supply(&self) -> Balance {
-            self.total_supply
-        }
-
-        #[ink(message)]
-        pub fn balance_of(&self, who: AccountId) -> Balance {
-            self.balances.get(&who).unwrap_or_default()
-        }
-
-        #[ink(message)]
-        pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
-            let sender = self.env().caller();
-
-            self.transfer_helper(&sender, &to, value)
-        }
-
-        #[ink(message)]
-        pub fn transfer_from(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            value: Balance,
-        ) -> Result<()> {
-            let sender = self.env().caller();
-            let allowance = self.allowances.get(&(from, sender)).unwrap_or_default();
-            if allowance < value {
-                return Err(Error::AllowanceTooLow);
-            }
-            self.allowances
-                .insert(&(from, sender), &(allowance - value));
-
-            self.transfer_helper(&from, &to, value)
-        }
-
-        #[ink(message)]
-        pub fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> {
-            let sender = self.env().caller();
-
-            self.allowances.insert(&(sender, to), &value);
-
-            self.env().emit_event(Approve {
-                from: sender,
-                to,
-                value,
-            });
-
-            Ok(())
-        }
-
         pub fn transfer_helper(
             &mut self,
             from: &AccountId,
@@ -141,6 +92,53 @@ mod erc20 {
                 to: Some(*to),
                 value,
             });
+            Ok(())
+        }
+    }
+
+    impl TERC20 for Erc20 {
+        #[ink(message)]
+        fn total_supply(&self) -> Balance {
+            self.total_supply
+        }
+
+        #[ink(message)]
+        fn balance_of(&self, who: AccountId) -> Balance {
+            self.balances.get(&who).unwrap_or_default()
+        }
+
+        #[ink(message)]
+        fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
+            let sender = self.env().caller();
+
+            self.transfer_helper(&sender, &to, value)
+        }
+
+        #[ink(message)]
+        fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
+            let sender = self.env().caller();
+            let allowance = self.allowances.get(&(from, sender)).unwrap_or_default();
+            if allowance < value {
+                return Err(Error::AllowanceTooLow);
+            }
+            self.allowances
+                .insert(&(from, sender), &(allowance - value));
+
+            self.transfer_helper(&from, &to, value)
+        }
+
+        #[ink(message)]
+        fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> {
+            let sender = self.env().caller();
+
+            self.allowances.insert(&(sender, to), &value);
+
+            self.env().emit_event(Approve {
+                from: sender,
+                to,
+                value,
+            });
+
             Ok(())
         }
     }

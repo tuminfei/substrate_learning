@@ -8,7 +8,7 @@ pub enum Error {
     AllowanceTooLow,
 }
 
-type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 type Environment = DefaultEnvironment;
 type AccountId = <DefaultEnvironment as ::ink::env::Environment>::AccountId;
 type Balance = <DefaultEnvironment as ::ink::env::Environment>::Balance;
