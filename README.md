@@ -104,3 +104,11 @@ pub fn extrinsic(origin: OriginFor<T>, number: u64) -> DispatchResult {
 	Ok(())
 }
 ```
+
+### Lesson 5 - Smart Contract
+
+```bash
+cd ink-playground/erc20
+
+cargo contract build
+```
