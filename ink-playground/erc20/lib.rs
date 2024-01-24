@@ -32,6 +32,15 @@ mod erc20 {
         value: Balance,
     }
 
+    #[ink(event)]
+    pub struct Approve {
+        #[ink(topic)]
+        from: AccountId,
+        #[ink(topic)]
+        to: AccountId,
+        value: Balance,
+    }
+
     type Result<T> = core::result::Result<T, Error>;
 
     impl Erc20 {
@@ -68,8 +77,40 @@ mod erc20 {
         #[ink(message)]
         pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
             let sender = self.env().caller();
-            
+
             self.transfer_helper(&sender, &to, value)
+        }
+
+        #[ink(message)]
+        pub fn transfer_from(
+            &mut self,
+            from: AccountId,
+            to: AccountId,
+            value: Balance,
+        ) -> Result<()> {
+            let sender = self.env().caller();
+            let allowance = self.allowances.get(&(from, sender)).unwrap_or_default();
+            if allowance < value {
+                return Err(Error::AllowanceTooLow);
+            }
+            self.allowances.insert(&(from, sender), &(allowance - value));
+
+            self.transfer_helper(&from, &to, value)
+        }
+
+        #[ink(message)]
+        pub fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> {
+            let sender = self.env().caller();
+
+            self.allowances.insert(&(sender, to), &value);
+
+            self.env().emit_event(Approve {
+                from: sender,
+                to,
+                value,
+            });
+
+            Ok(())
         }
 
         pub fn transfer_helper(
