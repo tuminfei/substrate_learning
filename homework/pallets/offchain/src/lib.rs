@@ -20,22 +20,23 @@ use frame_system::offchain::{
 	SigningTypes,
 };
 use sp_runtime::{
+	offchain::{http, Duration},
 	transaction_validity::{InvalidTransaction, TransactionValidity, ValidTransaction},
-	RuntimeDebug,
+	BoundedVec, RuntimeDebug,
 };
 
+use core::primitive::str;
 use frame_support::dispatch::Vec;
-use sp_runtime::{
-	offchain::storage::{MutateStorageError, StorageRetrievalError, StorageValueRef},
-	traits::Zero,
-};
-
-use sp_core::crypto::KeyTypeId;
+use scale_info::TypeInfo;
+use serde::{Deserialize, Deserializer};
+use sp_core::{crypto::KeyTypeId, ConstU32};
 use sp_io::offchain_index;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"btc!");
 
 pub const ONCHAIN_TX_KEY: &[u8] = b"my_pallet::indexing1";
+
+pub const ONCHAIN_WEATHER_TX_KEY: &[u8] = b"weather::indexing1";
 
 pub mod crypto {
 	use super::KEY_TYPE;
@@ -71,16 +72,64 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct Payload<Public> {
-		number: u64,
-		public: Public,
-	}
-
 	#[derive(Debug, Encode, Decode, Default)]
 	struct IndexingData(Vec<u8>, u64);
 
-	impl<T: SigningTypes> SignedPayload<T> for Payload<T::Public> {
+	#[derive(Debug, Encode, Decode, Default)]
+	struct WeatherIndexingData(BoundedVec<u8, ConstU32<9>>);
+
+	#[derive(Deserialize, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, Debug)]
+	pub struct WeatherInfo {
+		#[serde(deserialize_with = "de_string_to_bounded_bytes")]
+		pub shiku: BoundedVec<u8, ConstU32<32>>,
+		#[serde(deserialize_with = "de_string_to_bounded_bytes")]
+		pub pm25: BoundedVec<u8, ConstU32<32>>,
+		#[serde(deserialize_with = "de_string_to_bounded_bytes")]
+		pub wendu: BoundedVec<u8, ConstU32<32>>,
+	}
+
+	pub fn de_string_to_bounded_bytes<'de, D>(
+		de: D,
+	) -> Result<BoundedVec<u8, ConstU32<32>>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s: &str = Deserialize::deserialize(de)?;
+		Ok(BoundedVec::<u8, ConstU32<32>>::try_from(s.as_bytes().to_vec())
+			.map_err(|_| serde::de::Error::custom("BoundedVec error"))?)
+	}
+
+	pub fn de_vec_to_bounded_vec<'de, D>(
+		de: D,
+	) -> Result<BoundedVec<WeatherInfo, ConstU32<10>>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s: Vec<WeatherInfo> = Deserialize::deserialize(de)?;
+		let a = s
+			.into_iter()
+			.take(10)
+			.collect::<Vec<WeatherInfo>>()
+			.try_into()
+			.map_err(|_| serde::de::Error::custom("BoundedVec error"))?;
+
+		Ok(a)
+	}
+
+	#[derive(Deserialize, Debug, Encode, Decode)]
+	pub struct ApiResponse {
+		pub status: i32,
+		#[serde(deserialize_with = "de_vec_to_bounded_vec")]
+		pub data: BoundedVec<WeatherInfo, ConstU32<10>>,
+	}
+
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct TxPayload<Public> {
+		weather_data: BoundedVec<WeatherInfo, ConstU32<10>>,
+		public: Public,
+	}
+
+	impl<T: SigningTypes> SignedPayload<T> for TxPayload<T::Public> {
 		fn public(&self) -> T::Public {
 			self.public.clone()
 		}
@@ -121,7 +170,14 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
-		SomethingStored { something: u32, who: T::AccountId },
+		SomethingStored {
+			something: u32,
+			who: T::AccountId,
+		},
+		CityCodeStored {
+			city_code: BoundedVec<u8, ConstU32<9>>,
+			who: T::AccountId,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -181,14 +237,14 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn unsigned_extrinsic_with_signed_payload(
 			origin: OriginFor<T>,
-			payload: Payload<T::Public>,
+			payload: TxPayload<T::Public>,
 			_signature: T::Signature,
 		) -> DispatchResult {
 			ensure_none(origin)?;
 
 			log::info!(
 				"OCW ==> in call unsigned_extrinsic_with_signed_payload: {:?}",
-				payload.number
+				payload.weather_data
 			);
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
@@ -203,7 +259,29 @@ pub mod pallet {
 			let data = IndexingData(b"submit_number_unsigned".to_vec(), number);
 			offchain_index::set(&key, &data.encode());
 
-			log::info!("OCW ==> in extrinsic submit_number_unsigned: {:?}", number);
+			log::info!("OCW ==> {:?} in extrinsic submit_number_unsigned: {:?}", who, number);
+			Ok(())
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(0)]
+		pub fn set_offchain_city(
+			origin: OriginFor<T>,
+			city_code: BoundedVec<u8, ConstU32<9>>,
+		) -> DispatchResult {
+			let _who = ensure_signed(origin)?;
+
+			log::info!("EXTRINSIC ==> set_offchain_city: {:?}", city_code);
+			let data = WeatherIndexingData(city_code.clone());
+
+			log::info!("EXTRINSIC ==> set key: {:?}", ONCHAIN_WEATHER_TX_KEY);
+			log::info!(
+				"EXTRINSIC ==> set value: {:?}",
+				sp_std::str::from_utf8(&city_code).unwrap()
+			);
+			sp_io::offchain_index::set(&ONCHAIN_WEATHER_TX_KEY, &data.encode());
+
+			Self::deposit_event(Event::CityCodeStored { city_code, who: _who });
 			Ok(())
 		}
 	}
@@ -336,14 +414,48 @@ pub mod pallet {
 			// 	log::error!("OCW ==> No local account available");
 			// }
 
-			let key = Self::derived_key(block_number);
-			let storage_ref = StorageValueRef::persistent(&key);
+			// let key = Self::derived_key(block_number);
+			// let storage_ref = StorageValueRef::persistent(&key);
 
-			if let Ok(Some(data)) = storage_ref.get::<IndexingData>() {
-				log::info!("local storage data: {:?}, {:?}", &data.0, data.1);
+			// if let Ok(Some(data)) = storage_ref.get::<IndexingData>() {
+			// 	log::info!("local storage data: {:?}, {:?}", &data.0, data.1);
+			// } else {
+			// 	log::info!("Error reading from local storage.");
+			// }
+
+			let city_code = Self::get_city_code_from_storage();
+			if let Ok(info) = Self::fetch_weather_info(city_code) {
+				log::info!("OCW ==> Weather Info: {:?}", info);
+
+				// Retrieve the signer to sign the payload
+				let signer = Signer::<T, T::AuthorityId>::any_account();
+
+				if let Some((_, res)) = signer.send_unsigned_transaction(
+					// this line is to prepare and return payload
+					|acct| TxPayload { weather_data: info.clone(), public: acct.public.clone() },
+					|payload, signature| Call::unsigned_extrinsic_with_signed_payload {
+						payload,
+						signature,
+					},
+				) {
+					match res {
+						Ok(()) => {
+							log::info!(
+								"OCW ==> unsigned tx with signed payload successfully sent."
+							);
+						},
+						Err(()) => {
+							log::error!("OCW ==> sending unsigned tx with signed payload failed.");
+						},
+					};
+				} else {
+					log::error!("OCW ==> No local account available");
+				}
 			} else {
-				log::info!("Error reading from local storage.");
+				log::info!("OCW ==> Error while fetch weather info!");
 			}
+
+			log::info!("OCW ==> Leave from offchain workers!: {:?}", block_number);
 		}
 	}
 
@@ -361,13 +473,67 @@ pub mod pallet {
 		fn derived_key(block_number: BlockNumberFor<T>) -> Vec<u8> {
 			block_number.using_encoded(|encoded_bn| {
 				ONCHAIN_TX_KEY
-					.clone()
 					.into_iter()
 					.chain(b"/".into_iter())
 					.chain(encoded_bn)
 					.copied()
 					.collect::<Vec<u8>>()
 			})
+		}
+
+		fn fetch_weather_info(
+			city_code: BoundedVec<u8, ConstU32<9>>,
+		) -> Result<BoundedVec<WeatherInfo, ConstU32<10>>, http::Error> {
+			// prepare for send request
+			let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(8_000));
+			let url = Self::get_url(city_code);
+			let url = sp_std::str::from_utf8(&url).map_err(|_| {
+				log::warn!("No UTF8 body");
+				http::Error::Unknown
+			})?;
+			let request = http::Request::get(url);
+			let pending = request
+				.add_header("User-Agent", "Substrate-Offchain-Worker")
+				.deadline(deadline)
+				.send()
+				.map_err(|_| http::Error::IoError)?;
+			let response =
+				pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				log::warn!("Unexpected status code: {}", response.code);
+				return Err(http::Error::Unknown)
+			}
+			let body = response.body().collect::<Vec<u8>>();
+			let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+				log::warn!("No UTF8 body");
+				http::Error::Unknown
+			})?;
+
+			// parse the response str
+			let weather_response: ApiResponse =
+				serde_json::from_str(body_str).map_err(|_| http::Error::Unknown)?;
+
+			Ok(weather_response.data)
+		}
+
+		fn get_url(city_code: BoundedVec<u8, ConstU32<9>>) -> Vec<u8> {
+			let mut result = Vec::from("http://t.weather.sojson.com/api/weather/city/".as_bytes());
+			result.extend_from_slice(city_code.as_slice());
+			result
+		}
+
+		fn get_city_code_from_storage() -> BoundedVec<u8, ConstU32<9>> {
+			let mut result = BoundedVec::<u8, ConstU32<9>>::try_from(b"1".to_vec()).unwrap();
+			if let Some(city_code) =
+				sp_runtime::offchain::storage::StorageValueRef::persistent(ONCHAIN_WEATHER_TX_KEY)
+					.get::<WeatherIndexingData>()
+					.unwrap_or_else(|_| {
+						log::info!("OCW ==> Error while fetching data from offchain storage!");
+						None
+					}) {
+				result = city_code.0;
+			}
+			result
 		}
 	}
 }
