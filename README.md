@@ -59,6 +59,14 @@ and open `build/index.html` in your favorite browser.
 
 ## Homework
 
+### Lesson 1 - POE
+
+```bash
+cd homework/pallets/poe
+
+cargo build --release
+```
+
 ### Lesson 2 - Kitties
 
 ```bash
@@ -89,6 +97,17 @@ cd homework/pallets/offchain
 
 cargo build --release
 ```
+
+frontend
+
+```bash
+cd homework_frontend/offchain
+
+npm i
+
+ts-node index.ts
+```
+
 
 ```rust
 #[pallet::call_index(3)]
