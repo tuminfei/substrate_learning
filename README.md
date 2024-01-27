@@ -131,3 +131,11 @@ cd ink-playground/erc20
 
 cargo contract build
 ```
+
+### Lesson 6 - Testing & Deploy Online
+
+```bash
+cd cd homework
+
+cargo +nightly build --release --features runtime-benchmarks
+```
