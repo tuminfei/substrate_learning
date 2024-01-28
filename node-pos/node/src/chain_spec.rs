@@ -1,21 +1,21 @@
 use hex_literal::hex;
 
+use node_primitives::*;
 use node_template_runtime::{
-	AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY, BABE_GENESIS_EPOCH_CONFIG, SessionConfig, StakingConfig, SessionKeys,
-	constants::currency::*, StakerStatus, MaxNominations, ImOnlineConfig,
+	constants::currency::*, AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
+	ImOnlineConfig, MaxNominations, SessionConfig, SessionKeys, Signature, StakerStatus,
+	StakingConfig, SudoConfig, SystemConfig, BABE_GENESIS_EPOCH_CONFIG, WASM_BINARY,
 };
+use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_service::ChainType;
+use sc_telemetry::TelemetryEndpoints;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
-use sc_telemetry::TelemetryEndpoints;
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
 };
-use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-use node_primitives::*;
 
 // The URL for the telemetry server.
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -40,11 +40,7 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-fn session_keys(
-	babe: BabeId,
-	grandpa: GrandpaId,
-	im_online: ImOnlineId,
-) -> SessionKeys {
+fn session_keys(babe: BabeId, grandpa: GrandpaId, im_online: ImOnlineId) -> SessionKeys {
 	SessionKeys { babe, grandpa, im_online }
 }
 
@@ -153,8 +149,8 @@ pub fn staging_network_config() -> ChainSpec {
 	let boot_nodes = vec![];
 
 	ChainSpec::from_genesis(
-		"Substrate Stencil",
-		"stencil_network",
+		"Substrate Terry",
+		"terry_network",
 		ChainType::Live,
 		staging_network_config_genesis,
 		boot_nodes,
@@ -176,90 +172,85 @@ fn staging_network_config_genesis() -> GenesisConfig {
 		 the flag disabled.",
 	);
 
-	// for i in 1 2 3 4; do for j in stash controller; do subkey inspect "$SECRET//$i//$j"; done; done
-	// for i in 1 2 3 4; do for j in babe; do subkey --sr25519 inspect "$SECRET//$i//$j"; done; done
-	// for i in 1 2 3 4; do for j in grandpa; do subkey --ed25519 inspect "$SECRET//$i//$j"; done; done
-	// for i in 1 2 3 4; do for j in im_online; do subkey --sr25519 inspect "$SECRET//$i//$j"; done; done
+	// ./target/release/substrate-stencil key generate --scheme Sr25519 --password-interactive
+	// export SECRET='exit expect balance picnic struggle party garden resource despair fold addict
+	// for i in 1 2 3 4; do for j in stash controller; do ./target/release/substrate-stencil key inspect "$SECRET//$i//$j"; done; done
+	// for i in 1 2 3 4; do for j in babe; do ./target/release/substrate-stencil key inspect "$SECRET//$i//$j -- --sr25519"; done; done
+	// for i in 1 2 3 4; do for j in grandpa; do ./target/release/substrate-stencil key inspect "$SECRET//$i//$j -- --ed25519"; done; done
+	// for i in 1 2 3 4; do for j in im_online; do ./target/release/substrate-stencil key inspect "$SECRET//$i//$j -- --sr25519"; done; done
 	let initial_authorities: Vec<(AccountId, AccountId, BabeId, GrandpaId, ImOnlineId)> = vec![
 		(
 			// 5Grpw9i5vNyF6pbbvw7vA8pC5Vo8GMUbG8zraLMmAn32kTNH
 			hex!["d41e0bf1d76de368bdb91896b0d02d758950969ea795b1e7154343ee210de649"].into(),
-			// 5DLMZF33f61KvPDbJU5c2dPNQZ3jJyptsacpvsDhwNS1wUuU
-			hex!["382bd29103cf3af5f7c032bbedccfb3144fe672ca2c606147974bc2984ca2b14"].into(),
-			// 5Dhd2QbrSE4dyNn3YUg8j5TY3fG7ZAWZMoRRF9KUc7VPVGmC
-			hex!["48640c12bc1b351cf4b051ac1cf7b5740765d02e34989d0a9dd935ce054ebb21"]
+			// 5Gsxw51KiwWByePT32chsPJfjzUjZ2kxNcpBKPxzwJgbs3EK
+			hex!["d4fc37befb8b781c81d6c625f0feabca216e30a4dea31041d657b8fba531f24d"].into(),
+			// 5CyArZHDXVE4iALz35AKU6uJHgr4AMDzcbRck9gwP8mgSAbL
+			hex!["2803a508af686bc66899daa88f74da81aed9277316a24714aa8603cabe713e34"]
 				.unchecked_into(),
-			// 5C6rkxAZB437B5Bf1yS4B4qjW4HZPeBp8Kzx2Se9FLKhfyHY
-			hex!["01a474a93a0cf830fb40b1d17fd1fc7c6b4a95fa11f90345558574a72da0d4b1"]
+			// 5HGZs8y7TAvQ2JrSmqCTEEdi9ptPtf2qZsKNf8drpTdwQGda
+			hex!["e639357e903f283b806073cd8a61c1d7bd66e293cd5b7c700540ca846f66f17b"]
 				.unchecked_into(),
-			// 5DscuovXyY1o7DxYroYjYgipn87eqYLyQA3HJ21Utb7TqAai
-			hex!["50041e469c63c994374a2829b0b0829213abd53be5113e751043318a9d7c0757"]
-				.unchecked_into(),
-		),
-		(
-			// 5CFDk3yCSgQ2goiaksMfRMFRS7ZU28BZqPQDeAsgZUa6FRzt
-			hex!["08050f1b6bcd4651004df427c884073652bafd54e5ca25cea69169532db2910b"].into(),
-			// 5F1ks2enazaPktQa3HURLK8GywzNZaGirovPtFvvbv91TLhJ
-			hex!["8275157f2a1d8373106cb00078a73a92a3303f3bf6eb72c3a67413bd943b020b"].into(),
-			// 5CQ7gVQj96m8y79qPCqrM291rSNREfZ1Tf2fiLPSJReWTNy2
-			hex!["0ecddcf7643a98de200b80fe7b18ebd38987fa106c5ed84fc004fa75ea4bac67"]
-				.unchecked_into(),
-			// 5FyNaMc6GaioN7K9QzPJDEtGThJ1HmcruRdgtiRxaoAwn2VD
-			hex!["acdfcce0e40406fac1a8198c623ec42ea13fc627e0274bbb6c21e0811482ce13"]
-				.unchecked_into(),
-			// 5EUhcM9WPJGvhCz1UptA7ye8TgktGqbhaeSohCkAfW76q5bS
-			hex!["6ac58683d639d3992a0090ab15f8c1dcf5a5ab7652fc9de60845441f9fc93903"]
+			// 5GMt2Ys7gf41wLqvvXPc39TXUJrxtBej5atktXkasmevfJtq
+			hex!["be0a579a955b4130dd09ba9ecce31857013f90e89f78a1430e62f05849f3e078"]
 				.unchecked_into(),
 		),
 		(
-			// 5F6YideXfGcskpdFUczu3nZcJFmU9WKHgjjNVQjqgeVGRs66
-			hex!["861c6d95051f942bb022f13fc2125b2974933d8ab1441bfdee9855e9d8051556"].into(),
-			// 5F92x4qKNYaHtfp5Yy7kb9r6gHCHkN3YSvNuedERPHgrURTn
-			hex!["8801f479e09a78515f1badee0169864dae45648109091e29b03a7b4ea97ec018"].into(),
-			// 5CLqVJSpfAdMYW1FHygEV8iEi8XFornEcCzrhw9WmFbbp8Qp
-			hex!["0c4d9de1e313572750abe19140db56433d20e4668e09de4df81a36566a8f2528"]
+			// 5H3nAs4E13wX2QWmdtksL1MEPfLHi4bkaMrpCpf6Karxc7b5
+			hex!["dc78716eda98d7dcd2a076dc2028e67e7502fc123a526ddf6703ae174dbac835"].into(),
+			// 5EjrvKc7KTEEXbnnJvSuCXq1jmjArJG4ya4RhtXbvBFDMUD7
+			hex!["76558bdfff9d6102af16642aab4ebbbdc8ad4aafcd23a0a5080214d4b354920c"].into(),
+			// 5G9EF6fPNLXC8fck4g9Wvt3KNwFfqdvbBNH75pgAAKgcERqa
+			hex!["b46434cc5231eed048033802896d32101f56fd17ea2770273510ea0556fa4410"]
 				.unchecked_into(),
-			// 5HEQh8yEv4QU7joBCKYdjJJ57qU1gDAm4Xv5QZKfFnSbXpeo
-			hex!["e493d74f9fa7568cca9dd294c9619a54c2e1b6bd3ecf3677fa7f9076b98c3fcd"]
+			// 5FWRs7m4U2ubqPQmb6JyeuYD8tafeqw4ReoNWGFL3a9FH7FY
+			hex!["98533f00f4ed9f43a07ba05f5f4ef04b95be253bfecc55e44331d6ea53f77603"]
 				.unchecked_into(),
-			// 5GUEUCusMfW9c229gyuDG6XUH9pi3Cs4EZR9STtw8opfKuS6
-			hex!["c2e2a133b23995a48ff46cc704ef61929ee4a29b5fa468e41019ac63f3694e1f"]
+			// 5C8LYJS2t74FquY3t4pCcPnjnTq5jLdUsgP9qoNUzgfxAxa6
+			hex!["02c53928cd60dfd27c3bc0e5bec3250cf570d1ebae578487bb636acc58b88266"]
 				.unchecked_into(),
 		),
 		(
-			// 5FxxpyvEnE2sVujvhr6x4A4G171uv4WKSLvrUNst9M8MfdpV
-			hex!["ac8fdba5bbe008f65d0e85181daa5443c2eb492fea729a5981b2161467f8655c"].into(),
-			// 5FxFAYsTNf31D5AGbXW9ETZPUZofpreHjJkdKehidcvDt5X4
-			hex!["ac039bef73f76755d3747d711554f7fb0f16022da51483e0d600c9c7c8cbf821"].into(),
-			// 5GdjiBeMEFqTE6mWod3UqPrtkQTscRGtAcmdSbR26vGiXpwB
-			hex!["ca2245b6fa117fab9353a2031104d1d5d62e311957f375762324e65d71127465"]
+			// 5F4sjmu1A84fKUhHPrCvLnA8GWaCzHF93oLdekSpL8ZVf89i
+			hex!["84d5f69712589177c6ef580d4513462ae0620fa88f71fe39f2ee890ddeea3645"].into(),
+			// 5EnYqxeFUmSds5TuTcmwzDQdNtGVyNgM9W5LvNSqx5BSxSPD
+			hex!["78626fa1c8afcb95a1aefec3717261ec23ef9a9935b8c9ea2bd8b9098b123c5d"].into(),
+			// 5GvTVhw25uR1kJSdZzutMPoKGLg5zqvbz1V3Vneng8GzrZXH
+			hex!["d6e2dbf3cbe089c34d3b1901cd9f839d88b77d7177b9326aec69e433d797bd7d"]
 				.unchecked_into(),
-			// 5DMfkaaR4tzmarUsRMkrbnFNmVnYtYjTPFJsjvA4X15WAZZB
-			hex!["392c51bf0c08f89cb1e091782d81359475d780986968ba7f6fa60f41feda6bf7"]
+			// 5Ef6RhANS1TwVM3FK2tXF19XgFhFaGZw7MmFMRNc1AHGT1N8
+			hex!["72b2c9366f4979f178e9c7cac88aa7b9426412a1ec4e61dead3cde97ed414223"]
 				.unchecked_into(),
-			// 5HGzdyJakxDdnERv3nvNjd6Xmz5R39NEuuJ2B3miubDY6BHD
-			hex!["e68c9a2ee25e1999a4e87906aea429f3e5f3fc8dc9cd89f423d82860c6937b2e"]
+			// 5ETtPqnR3Hcy5sZfXwLaDXGXqAvK3R6kCs8qMbcYC7XHU3Mf
+			hex!["6a26955f570c0be74ab3c73b66c900c3defaf76a1aadf60a00dbfd3962f1f93c"]
+				.unchecked_into(),
+		),
+		(
+			// 5GgJichQYJqYNzmnrXkkzAj5gk1K4g3zeXUwQZrjiFJLvCMP
+			hex!["cc17e0485f0aacbd5f693f3686e1c740214fe5389473766569c0ac62aab11934"].into(),
+			// 5GisHk4ySDmxK28HQLNV8zfezdegTcnPaQYFuuoWvyDxzDPK
+			hex!["ce0c02de113e7a80d64d459ab4b65a05692d759ea556e400a3b168843affe154"].into(),
+			// 5GBkQbhb89PyAT1GGVfyCzZGrXFzDdhEugPTZmLp6aaHQBow
+			hex!["b6503ccabad4551f2518f5c0334a66daa97154acfad6c4726befc19bcfe1a22f"]
+				.unchecked_into(),
+			// 5Fdyi1DNnGaHUU6M4kyCRX5nYydEKLsXqKsRECZrxyWmpwe5
+			hex!["9e15281924218d5eb0d6393896cc4a7cc4dde2021ca62612e428d044fb40044c"]
+				.unchecked_into(),
+			// 5H1nPpGgQzQsybF3Y4Fsn5W8siCy88fayyR4R1ojWxYQwQia
+			hex!["daf2b43a7bff8baf256c1c1fd86b29fff56fc56751e4d410a2a20d2234213a01"]
 				.unchecked_into(),
 		),
 	];
 
-	// generated with secret: subkey inspect "$secret"/fir
+	// generated with secret: ./target/release/substrate-stencil key inspect "$secret"/fir
 	let root_key: AccountId = hex![
-		// 5FemZuvaJ7wVy4S49X7Y9mj7FyTR4caQD5mZo2rL7MXQoXMi
-		"9eaf896d76b55e04616ff1e1dce7fc5e4a417967c17264728b3fd8fee3b12f3c"
+		// 5Ct1SLsTZB4bMeKCdchDWL2oN7hNTpjmrVqDsrWqspERFSDo
+		"2413b72fb065b202a7b84c9a663c167c1435ec0814edf40a3c7ccbcf7a23ba33"
 	]
 	.into();
 
 	let endowed_accounts: Vec<AccountId> = vec![root_key.clone()];
 
-	testnet_genesis(
-		wasm_binary,
-		initial_authorities,
-		vec![],
-		root_key,
-		endowed_accounts,
-		true,
-	)
+	testnet_genesis(wasm_binary, initial_authorities, vec![], root_key, endowed_accounts, true)
 }
 
 /// Configure initial storage state for FRAME modules.
@@ -312,22 +303,13 @@ fn testnet_genesis(
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
-		babe: BabeConfig {
-			authorities: vec![],
-			epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG),
-		},
-		grandpa: GrandpaConfig {
-			authorities: vec![],
-		},
+		babe: BabeConfig { authorities: vec![], epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG) },
+		grandpa: GrandpaConfig { authorities: vec![] },
 		session: SessionConfig {
 			keys: initial_authorities
 				.iter()
 				.map(|x| {
-					(
-						x.0.clone(),
-						x.0.clone(),
-						session_keys(x.2.clone(), x.3.clone(), x.4.clone()),
-					)
+					(x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone()))
 				})
 				.collect::<Vec<_>>(),
 		},
