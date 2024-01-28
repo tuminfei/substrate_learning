@@ -134,8 +134,10 @@ cargo contract build
 
 ### Lesson 6 - Testing & Deploy Online
 
+#### Benchmarks
+
 ```bash
-cd cd homework
+cd homework
 
 cargo +nightly build --release --features runtime-benchmarks
 
@@ -149,3 +151,15 @@ cargo +nightly build --release --features runtime-benchmarks
 	--template .maintain/frame-weight-template.hbs
 
 ```
+
+#### POS node
+
+```bash
+cd node-pos
+
+cat terry-staging.json
+cat terry-staging-raw.json
+cat terry-testnet-config.md
+```
+
+
